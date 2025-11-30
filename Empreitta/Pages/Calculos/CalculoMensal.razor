@@ -1,0 +1,178 @@
+﻿@page "/calculo-mensal"
+@using Empreitta.Data
+@using Empreitta.Models
+@using Microsoft.EntityFrameworkCore
+@inject EmpreittaDbContext contexto
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h3 class="m-0">Cálculo Mensal</h3>
+
+    <button class="btn btn-secondary mb-3" @onclick="Imprimir">
+        Imprimir
+    </button>
+</div>
+
+<div class="mb-3">
+    <label class="form-label">Selecione o Funcionário</label>
+    <select class="form-select" @onchange="SelecionarFuncionario">
+        <option value="">Selecione</option>
+        <option value="0">Todos</option>
+        @foreach (var p in profissionais)
+        {
+            <option value="@p.Id">@p.Nome (@p.Cpf)</option>
+        }
+    </select>
+</div>
+
+
+<div id="area-impressao">
+@if (modoTodos)
+{
+    <h4>Todos os Funcionários — Cálculo Mensal</h4>
+
+    @foreach (var item in listaTodos)
+    {
+        <div class="card p-3 mt-3 shadow-sm">
+            <h5>@item.Profissional.Nome (@item.Profissional.Cpf)</h5>
+
+            <table class="table table-bordered">
+                <tbody>
+                    <tr>
+                        <th>Salário Base</th>
+                        <td>@item.Profissional.SalarioBase.ToString("C")</td>
+                    </tr>
+
+                    @foreach (var t in item.Tarefas)
+                    {
+                        <tr>
+                            <th>@t.Descricao (@t.Obra)</th>
+                            <td>@t.Total.ToString("C")</td>
+                        </tr>
+                    }
+
+                    <tr class="table-success">
+                        <th>Total</th>
+                        <td><strong>@item.TotalGeral.ToString("C")</strong></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    }
+}
+else if (funcionario != null)
+{
+    <div class="card p-3 mt-3 shadow-sm">
+
+        <h5 class="mb-3">@funcionario.Nome (@funcionario.Cpf)</h5>
+
+        <table class="table table-bordered">
+            <tbody>
+                <tr>
+                    <th>Salário Base</th>
+                    <td>@funcionario.SalarioBase.ToString("C")</td>
+                </tr>
+
+                @foreach (var t in tarefas)
+                {
+                    <tr>
+                        <th>@t.Descricao (@t.Obra)</th>
+                        <td>@t.Total.ToString("C")</td>
+                    </tr>
+                }
+
+                <tr class="table-success">
+                    <th>Total Mensal</th>
+                    <td><strong>@TotalMensal.ToString("C")</strong></td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+}
+</div>
+
+@code {
+    [Inject] IJSRuntime js { get; set; }
+    private List<Profissional> profissionais = new();
+    private Profissional funcionario;
+    private List<TarefaProfissional> tarefas = new();
+
+    private bool modoTodos = false;
+
+    private class CalculoFuncionario
+    {
+        public Profissional Profissional { get; set; }
+        public List<TarefaProfissional> Tarefas { get; set; }
+        public decimal TotalGeral { get; set; }
+    }
+
+    private List<CalculoFuncionario> listaTodos = new();
+
+    private async Task Imprimir()
+    {
+        await js.InvokeVoidAsync("imprimirArea", "area-impressao");
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        profissionais = await contexto.Profissionais.ToListAsync();
+    }
+
+    private async Task SelecionarFuncionario(ChangeEventArgs e)
+    {
+        if (!int.TryParse(e.Value?.ToString(), out int id))
+            return;
+
+        if (id == 0)
+        {
+            modoTodos = true;
+            funcionario = null;
+
+            await CarregarTodosFuncionarios();
+
+            return;
+        }
+
+        modoTodos = false;
+
+        funcionario = await contexto.Profissionais.FindAsync(id);
+        tarefas = await CarregarTarefasDoFuncionario(id);
+    }
+
+    private async Task CarregarTodosFuncionarios()
+    {
+        listaTodos.Clear();
+
+        var mes = DateTime.Now.Month;
+        var ano = DateTime.Now.Year;
+
+        var todos = await contexto.Profissionais.ToListAsync();
+
+        foreach (var prof in todos)
+        {
+            var tarefas = await contexto.TarefaProfissional
+                .Where(t => t.ProfissionalId == prof.Id && t.Mes == mes && t.Ano == ano)
+                .ToListAsync();
+
+            listaTodos.Add(new CalculoFuncionario
+            {
+                Profissional = prof,
+                Tarefas = tarefas,
+                TotalGeral = prof.SalarioBase + tarefas.Sum(t => t.Total)
+            });
+        }
+    }
+
+    private async Task<List<TarefaProfissional>> CarregarTarefasDoFuncionario(int profissionalId)
+    {
+        var mes = DateTime.Now.Month;
+        var ano = DateTime.Now.Year;
+
+        return await contexto.TarefaProfissional
+            .Where(t => t.ProfissionalId == profissionalId && t.Mes == mes && t.Ano == ano)
+            .OrderBy(t => t.DataRegistro)
+            .ToListAsync();
+    }
+
+    private decimal TotalMensal =>
+        (funcionario?.SalarioBase ?? 0) + tarefas.Sum(t => t.Total);
+}

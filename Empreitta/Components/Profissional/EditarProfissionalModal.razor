@@ -1,0 +1,63 @@
+﻿@using Empreitta.Data
+@using Empreitta.Models
+@inherits ComponentBase
+
+@if (Visivel)
+{
+    <div class="modal fade show" tabindex="-1" style="display:block; background: rgba(0,0,0,0.5);">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Editar Profissional</h5>
+                    <button type="button" class="btn-close" @onclick="Fechar"></button>
+                </div>
+
+                <div class="modal-body">
+
+                    @if (Profissional != null)
+                    {
+                        <div class="mb-3">
+                            <label class="form-label">Nome</label>
+                            <input class="form-control" @bind="Profissional.Nome" />
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">CPF</label>
+                            <input class="form-control" @bind="Profissional.Cpf" />
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Telefone</label>
+                            <input class="form-control" @bind="Profissional.Telefone" />
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Salário Base</label>
+                            <input type="number" step="0.01" class="form-control" @bind="Profissional.SalarioBase" />
+                        </div>
+                    }
+                </div>
+
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" @onclick="Fechar">Cancelar</button>
+                    <button class="btn btn-success" @onclick="Salvar">Salvar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public bool Visivel { get; set; }
+    [Parameter] public Profissional Profissional { get; set; }
+    [Parameter] public EventCallback OnClose { get; set; }
+    [Parameter] public EventCallback<Profissional> OnSave { get; set; }
+
+    private void Fechar() => OnClose.InvokeAsync();
+
+    private async Task Salvar()
+    {
+        await OnSave.InvokeAsync(Profissional);
+        await OnClose.InvokeAsync();
+    }
+}

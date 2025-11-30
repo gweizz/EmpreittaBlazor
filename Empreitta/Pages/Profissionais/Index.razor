@@ -1,0 +1,142 @@
+﻿@page "/profissionais"
+@using Empreitta.Components.Profissional
+@using Empreitta.Data
+@using Empreitta.Models
+@using Microsoft.EntityFrameworkCore
+@inject EmpreittaDbContext _context
+@inject NavigationManager Nav
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h3 class="m-0">Profissionais Cadastrados</h3>
+
+    <button class="btn btn-primary" @onclick="IrParaNovo">
+        Novo Profissional
+    </button>
+</div>
+
+
+@if (profissionais == null)
+{
+    <p>Carregando...</p>
+}
+else if (!profissionais.Any())
+{
+    <p>Nenhum profissional cadastrado.</p>
+}
+else
+{
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Nome</th>
+                <th>CPF</th>
+                <th>Telefone</th>
+                <th>Salário Base</th>
+                <th>Ações</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var p in profissionais)
+            {
+                <tr>
+                    <td>@p.Id</td>
+                    <td>@p.Nome</td>
+                    <td>@p.Cpf</td>
+                    <td>@p.Telefone</td>
+                    <td>@p.SalarioBase.ToString("C")</td>
+                    <td>
+                        <button class="btn btn-sm btn-warning me-2" @onclick="@(() => Editar(p.Id))">Editar</button>
+                        <button class="btn btn-sm btn-info me-2" @onclick="@(() => AbrirCalculo(p.Id))">Calcular</button>
+                        <button class="btn btn-sm btn-danger" @onclick="@(() => Excluir(p.Id))">Excluir</button>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+<EditarProfissionalModal 
+    Visivel="@modalVisivel"
+    Profissional="@profissionalEdicao"
+    OnSave="SalvarEdicao"
+    OnClose="FecharModal" />
+
+<CalculoProfissionalModal
+    Visivel="@modalCalculoVisivel"
+    Profissional="@profissionalCalculo"
+    OnSave="SalvarCalculo"
+    OnClose="FecharCalculo" />
+
+
+@code {
+    List<Profissional> profissionais;
+    private bool modalVisivel = false;
+    private Profissional profissionalEdicao = new();
+    bool modalCalculoVisivel = false;
+    Profissional profissionalCalculo;
+
+    protected override async Task OnInitializedAsync(){
+        profissionais = await _context.Profissionais.ToListAsync();
+    }
+
+    void IrParaNovo(){
+        Nav.NavigateTo("/profissional/criar");
+    }
+
+
+    private async Task Editar(int id)
+    {
+        var profissional = await _context.Profissionais.FindAsync(id);
+        if (profissional is not null)
+        {
+            profissionalEdicao = profissional;
+            modalVisivel = true;
+        }
+    }
+
+    private void FecharModal(){
+        modalVisivel = false;
+    }
+    
+    private async Task SalvarEdicao(Profissional p){
+        _context.Update(p);
+        await _context.SaveChangesAsync();
+    }
+
+    async Task AbrirCalculo(int profissionalId)
+    {
+        profissionalCalculo = await _context.Profissionais.FindAsync(profissionalId);
+    
+        if (profissionalCalculo == null)
+            return;
+    
+        modalCalculoVisivel = true;
+    }
+
+
+    Task FecharCalculo()
+    {
+        modalCalculoVisivel = false;
+        return Task.CompletedTask;
+    }
+
+    Task SalvarCalculo(List<TarefaProfissional> tarefas)
+    {
+        return Task.CompletedTask;
+    }
+
+    async Task Excluir(int id)
+    {
+        var profissional = await _context.Profissionais.FindAsync(id);
+
+        if (profissional != null)
+        {
+            _context.Profissionais.Remove(profissional);
+            await _context.SaveChangesAsync();
+        }
+
+        profissionais = await _context.Profissionais.ToListAsync();
+        StateHasChanged();
+    }
+}

@@ -1,0 +1,156 @@
+﻿@using Empreitta.Data
+@using Empreitta.Models
+@using Microsoft.EntityFrameworkCore
+@inject EmpreittaDbContext _context
+
+@if (Visivel)
+{
+    <div class="modal fade show d-block" style="background-color: rgba(0,0,0,0.5);">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        Cálculo do Profissional — @Profissional?.Nome (@Profissional?.Cpf)
+                    </h5>
+                    <button type="button" class="btn-close" @onclick="Close"></button>
+                </div>
+
+                <div class="modal-body">
+
+                    <div class="row g-3">
+
+                        <div class="col-md-6">
+                            <label class="form-label">Obra</label>
+                            <input class="form-control" @bind="Obra" />
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label">Descrição</label>
+                            <input class="form-control" @bind="Descricao" />
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label">Quantidade (m²)</label>
+                            <input class="form-control" type="number" step="0.01" @bind="Quantidade" />
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label">Valor por m²</label>
+                            <input class="form-control" type="number" step="0.01" @bind="Valor" />
+                        </div>
+
+                    </div>
+
+                    <hr />
+
+                    <div class="d-flex justify-content-end mb-3">
+                        <button class="btn btn-secondary me-2" @onclick="Close">Cancelar</button>
+                        <button class="btn btn-primary" @onclick="AdicionarTarefaAsync">Adicionar</button>
+                    </div>
+
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Obra</th>
+                                <th>Descrição</th>
+                                <th>Qtd</th>
+                                <th>Valor</th>
+                                <th>Total</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var t in Tarefas)
+                            {
+                                <tr>
+                                    <td>@t.Obra</td>
+                                    <td>@t.Descricao</td>
+                                    <td>@t.Quantidade</td>
+                                    <td>@t.Valor.ToString("C")</td>
+                                    <td>@t.Total.ToString("C")</td>
+                                    <td>
+                                        <button class="btn btn-sm btn-danger"
+                                                @onclick="() => Remover(t)">
+                                            Excluir
+                                        </button>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+
+                </div>
+
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public bool Visivel { get; set; }
+    [Parameter] public Profissional Profissional { get; set; }
+    [Parameter] public EventCallback<List<TarefaProfissional>> OnSave { get; set; }
+    [Parameter] public EventCallback OnClose { get; set; }
+
+    public List<TarefaProfissional> Tarefas { get; set; } = new();
+
+    string Obra = "";
+    string Descricao = "";
+    decimal Quantidade = 0;
+    decimal Valor = 0;
+
+    void Close() => OnClose.InvokeAsync();
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (Visivel && Profissional != null)
+        {
+            await CarregarTarefasDoProfissional();
+        }
+    }
+
+    private async Task AdicionarTarefaAsync()
+    {
+        if (string.IsNullOrWhiteSpace(Obra) || string.IsNullOrWhiteSpace(Descricao))
+            return;
+    
+        var tarefa = new TarefaProfissional
+        {
+            ProfissionalId = Profissional.Id,
+            Obra = Obra,
+            Descricao = Descricao,
+            Quantidade = Quantidade,
+            Valor = Valor,
+            Mes = DateTime.Now.Month,
+            Ano = DateTime.Now.Year,
+            DataRegistro = DateTime.Now
+        };
+    
+        _context.TarefaProfissional.Add(tarefa);
+        await _context.SaveChangesAsync();
+    
+        await CarregarTarefasDoProfissional();
+    
+        Obra = "";
+        Descricao = "";
+        Quantidade = 0;
+        Valor = 0;
+    
+        StateHasChanged();
+    }
+
+    private async Task CarregarTarefasDoProfissional()
+    {
+        if (Profissional == null) { Tarefas = new List<TarefaProfissional>(); return; }
+    
+        Tarefas = await _context.TarefaProfissional
+            .Where(t => t.ProfissionalId == Profissional.Id && t.Mes == DateTime.Now.Month && t.Ano == DateTime.Now.Year)
+            .ToListAsync();
+    }
+
+    void Remover(TarefaProfissional tarefa)
+    {
+        Tarefas.Remove(tarefa);
+    }
+}

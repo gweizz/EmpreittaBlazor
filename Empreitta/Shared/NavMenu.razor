@@ -1,0 +1,60 @@
+﻿@inject NavigationManager NavigationManager
+
+<div class="top-row navbar navbar-dark navbar-empreitta-header">
+    <div class="container-fluid">
+        <a class="navbar-brand" href="">Empreitta</a>
+
+        <button title="Navigation menu"
+                class="navbar-toggler"
+                @onclick="ToggleNavMenu">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+    </div>
+</div>
+
+<div class="@NavMenuCssClass navbar-empreitta-body">
+    <nav class="flex-column">
+
+        <div class="nav-item nav-item-emp @(IsActive("/"))">
+            <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
+                <span class="oi oi-home"></span> Home
+            </NavLink>
+        </div>
+
+        <div class="nav-item nav-item-emp @(IsActive("/profissionais"))">
+            <NavLink class="nav-link" href="/profissionais">
+                <span class="oi oi-people"></span> Profissionais
+            </NavLink>
+        </div>
+
+        <div class="nav-item nav-item-emp @(IsActive("/calculo-mensal"))">
+            <NavLink class="nav-link" href="/calculo-mensal">
+                <span class="oi oi-calculator"></span> Cálculo Mensal
+            </NavLink>
+        </div>
+
+    </nav>
+</div>
+
+@code {
+private bool collapseNavMenu = true;
+
+    private string NavMenuCssClass => collapseNavMenu ? "collapse" : "collapse show";
+
+    void ToggleNavMenu()
+    {
+        collapseNavMenu = !collapseNavMenu;
+    }
+
+    string IsActive(string route)
+    {
+        var current = NavigationManager.Uri.Replace(NavigationManager.BaseUri, "").ToLower();
+
+        if (route == "/" && current == "")
+            return "nav-item-active";
+
+        return current.StartsWith(route.Trim('/').ToLower())
+            ? "nav-item-active"
+            : "";
+    }
+}

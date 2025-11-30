@@ -1,0 +1,46 @@
+﻿@page "/profissional/criar"
+@using Empreitta.Data
+@using Empreitta.Models
+@inject EmpreittaDbContext _context
+@inject NavigationManager Nav
+
+<h3>Novo Profissional</h3>
+
+<EditForm Model="profissional" OnValidSubmit="Salvar">
+    <DataAnnotationsValidator />
+    <ValidationSummary />
+
+    <div class="mb-3">
+        <label>Nome</label>
+        <InputText class="form-control" @bind-Value="profissional.Nome" />
+    </div>
+
+    <div class="mb-3">
+        <label>CPF</label>
+        <InputText class="form-control" @bind-Value="profissional.Cpf" />
+    </div>
+
+    <div class="mb-3">
+        <label>Telefone</label>
+        <InputText class="form-control" @bind-Value="profissional.Telefone" />
+    </div>
+
+    <div class="mb-3">
+        <label>Salário Base</label>
+        <InputNumber class="form-control" @bind-Value="profissional.SalarioBase" />
+    </div>
+
+    <button class="btn btn-primary">Salvar</button>
+</EditForm>
+
+@code {
+    Profissional profissional = new();
+
+    private async Task Salvar()
+    {
+        _context.Profissionais.Add(profissional);
+        await _context.SaveChangesAsync();
+
+        Nav.NavigateTo("/profissionais");
+    }
+}
